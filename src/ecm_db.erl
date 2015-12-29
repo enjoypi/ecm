@@ -19,14 +19,12 @@
   sync_table/2
 ]).
 
+%% ecm_Type
 -record(ecm_process, {id, pid, node}).
 
--define(PROCESS_RECORD(Table, Id, Pid, Node), {Table, Id, Pid, Node}).
--define(EXTRACT_PID, {_, _, Pid, _}).
-
+%% tables for masters
 -record(ecm_nodes, {type, node}).
 -record(ecm_processes, {pid, table, id}).
--define(EXTRACT_ID_FROM_PROCESSES, {_, _, Id}).
 
 %%%===================================================================
 %%% API
@@ -77,7 +75,7 @@ foreach_pid(Type, Function) ->
   {atomic, ok} = mnesia:transaction(
     fun mnesia:foldl/3,
     [
-      fun(?EXTRACT_PID, ok) ->
+      fun({_, _, Pid, _}, ok) ->
         ok = Function(Pid)
       end,
       ok,
@@ -94,7 +92,7 @@ foreach_pid(Type, Function) ->
 get(Type, Id) ->
   Table = table_name(Type),
   case catch mnesia:dirty_read(Table, Id) of
-    [?EXTRACT_PID | _] ->
+    [{_, _, Pid, _} | _] ->
       {ok, Pid};
     _ ->
       undefined
@@ -129,7 +127,7 @@ set(Type, Id, Node, Pid) ->
       _ ->
         ok
     end,
-  ok = mnesia:dirty_write(?PROCESS_RECORD(Table, Id, Pid, Node)),
+  ok = mnesia:dirty_write({Table, Id, Pid, Node}),
   ok = mnesia:dirty_write({ecm_processes, Pid, Table, Id}),
   ok = ecm_process_server:monitor(Pid),
   Result.
