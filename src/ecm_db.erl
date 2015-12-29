@@ -139,7 +139,8 @@ set(Type, Id, Node, Pid) ->
 %% @end
 %%--------------------------------------------------------------------
 size(Type) ->
-  length(mnesia:dirty_all_keys(table_name(Type))).
+  ets:info(table_name(Type), size).
+%%  length(mnesia:dirty_all_keys(table_name(Type))).
 
 %%--------------------------------------------------------------------
 %% @doc
