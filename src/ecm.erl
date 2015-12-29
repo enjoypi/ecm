@@ -72,7 +72,11 @@ hatch_child(Type, Id, M, F, A, Msg) ->
   hatch_child(Type, Id, M, F, A, Msg, fun random_node/1).
 
 hatch_child(Type, Id, M, F, A, Msg, Selector) ->
-  hatch_child(ecm_db:get(Type, Id), Type, Id, M, F, A, Msg, Selector).
+  Fun =
+    fun() ->
+      hatch_child(ecm_db:get(Type, Id), Type, Id, M, F, A, Msg, Selector)
+    end,
+  global:trans({{Type,Id},self()},Fun).
 
 multi_cast(Type, Msg) ->
   ok = ecm_db:foreach_pid(Type,
@@ -136,8 +140,9 @@ hatch_child(undefined, Type, Id, M, F, A, Msg, Selector) ->
     end,
   ok = ecm_db:set(Type, Id, Node, Pid),
   cast({ok, Pid}, Msg);
-hatch_child({ok, _Pid}, _Type, _Id, _M, _F, _A, _Msg, _Selector) ->
-  already_exists.
+hatch_child({ok, Pid}, _Type, _Id, _M, _F, _A, Msg, _Selector) ->
+  ok = gen_server:cast(Pid, Msg),
+  {ok,Pid}.
 
 send({ok, Pid}, undefined) ->
   {ok, Pid};

@@ -21,4 +21,5 @@ erl_crash.dump
 log
 logs
 rebar.lock
-
+.idea/
+ecm.iml
