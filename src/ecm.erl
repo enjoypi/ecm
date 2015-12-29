@@ -22,7 +22,8 @@
   multi_cast/2,
   send/3,
   set/4,
-  size/1
+  size/1,
+  sync_table/1
 ]).
 
 %%%===================================================================
@@ -86,6 +87,9 @@ set(Type, Id, Node, Pid) ->
 
 size(Type) ->
   ecm_db:size(Type).
+
+sync_table(Type) ->
+  ecm_db:sync_table(Type).
 
 %%%===================================================================
 %%% Internal functions

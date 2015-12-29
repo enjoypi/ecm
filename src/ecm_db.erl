@@ -140,7 +140,37 @@ start(Type, Masters) ->
   ok = application:ensure_started(mnesia),
   {ok, _} = mnesia:change_config(extra_db_nodes, Masters),
   ok = mnesia:wait_for_tables([schema], 60000),
-  ok = sync_tables(Type).
+  ok = sync_table(Type).
+
+%%--------------------------------------------------------------------
+%% @doc
+%% @spec
+%% @end
+%%--------------------------------------------------------------------
+sync_table(master) ->
+  {ok, Masters} = application:get_env(ecm, masters),
+  NodesTabDef = [
+    {attributes, record_info(fields, ecm_nodes)},
+    {ram_copies, Masters},
+    {type, bag}
+  ],
+  ok = sync_table(ecm_nodes, NodesTabDef),
+  ProcessesTabDef = [
+    {attributes, record_info(fields, ecm_processes)},
+    {ram_copies, Masters},
+    {type, set}
+  ],
+  ok = sync_table(ecm_processes, ProcessesTabDef);
+sync_table(Type) ->
+  %% can create atom
+  Table = list_to_atom(lists:concat(["ecm_", Type])),
+  Nodes = [node() | nodes()],
+  TabDef = [
+    {attributes, record_info(fields, ecm_process)},
+    {ram_copies, Nodes},
+    {type, set}
+  ],
+  ok = sync_table(Table, TabDef).
 
 %%%===================================================================
 %%% Internal functions
@@ -157,31 +187,6 @@ on_add_table_copy({abort, Reason}, _, _) ->
 
 sync_table(Table, TabDef) ->
   on_add_table_copy(mnesia:add_table_copy(Table, node(), ram_copies), Table, TabDef).
-
-sync_tables(master) ->
-  {ok, Masters} = application:get_env(ecm, masters),
-  NodesTabDef = [
-    {attributes, record_info(fields, ecm_nodes)},
-    {ram_copies, Masters},
-    {type, bag}
-  ],
-  ok = sync_table(ecm_nodes, NodesTabDef),
-  ProcessesTabDef = [
-    {attributes, record_info(fields, ecm_processes)},
-    {ram_copies, Masters},
-    {type, set}
-  ],
-  ok = sync_table(ecm_processes, ProcessesTabDef);
-sync_tables(Type) ->
-  %% can create atom
-  Table = list_to_atom(lists:concat(["ecm_", Type])),
-  Nodes = [node() | nodes()],
-  TabDef = [
-    {attributes, record_info(fields, ecm_process)},
-    {ram_copies, Nodes},
-    {type, set}
-  ],
-  ok = sync_table(Table, TabDef).
 
 table_name(Type) ->
   %% won't create atom
