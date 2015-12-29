@@ -23,7 +23,8 @@
   send/3,
   set/4,
   size/1,
-  sync_table/1
+  sync_table/1,
+  sync_table/2
 ]).
 
 %%%===================================================================
@@ -90,6 +91,9 @@ size(Type) ->
 
 sync_table(Type) ->
   ecm_db:sync_table(Type).
+
+sync_table(Table, TabDef) ->
+  ecm_db:sync_table(Table, TabDef).
 
 %%%===================================================================
 %%% Internal functions
