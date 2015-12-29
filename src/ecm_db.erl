@@ -60,6 +60,7 @@ delete(Pid) when is_pid(Pid) ->
 %%--------------------------------------------------------------------
 finish_start(Type) ->
   ok = mnesia:wait_for_tables([ecm_nodes], 60000),
+  ok = sync_other_tables(),
   {atomic, _} = mnesia:transaction(
     fun() ->
       ok = mnesia:write(#ecm_nodes{type = Type, node = node()})
@@ -180,6 +181,7 @@ sync_table(Type) ->
     {ram_copies, Nodes},
     {type, set}
   ],
+  error_logger:error_msg("~p:sync_table\t~p", [node(), Type]),
   ok = sync_table(Table, TabDef).
 
 %%--------------------------------------------------------------------
@@ -200,8 +202,16 @@ on_add_table_copy({aborted, {no_exists, _}}, Table, TabDef) ->
   ok;
 on_add_table_copy({aborted, {already_exists, Table, _}}, Table, _) ->
   ok = mnesia:wait_for_tables([schema, Table], 60000);
-on_add_table_copy({abort, Reason}, _, _) ->
-  {error, Reason}.
+on_add_table_copy(Reason, _, _) ->
+  error_logger:error_msg("~p", [Reason]),
+  Reason.
+
+sync_other_tables() ->
+  {atomic, Tables} = mnesia:transaction(
+    fun() ->
+      [T || T <- mnesia:all_keys(ecm_nodes), T =/= master]
+    end),
+  ok = lists:foreach(fun sync_table/1, Tables).
 
 table_name(Type) ->
   %% won't create atom
