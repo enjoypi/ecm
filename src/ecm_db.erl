@@ -14,7 +14,9 @@
   nodes/1,
   set/4,
   size/1,
-  start/2
+  start/2,
+  sync_table/1,
+  sync_table/2
 ]).
 
 -record(ecm_process, {id, pid, node}).
@@ -119,9 +121,17 @@ nodes(Type) ->
 %%--------------------------------------------------------------------
 set(Type, Id, Node, Pid) ->
   Table = table_name(Type),
+  Result =
+    case catch mnesia:dirty_read(Table, Id) of
+      [R = {Table, Id, Pid, _}] ->
+        {ok, R};
+      _ ->
+        ok
+    end,
   ok = mnesia:dirty_write(?PROCESS_RECORD(Table, Id, Pid, Node)),
   ok = mnesia:dirty_write({ecm_processes, Pid, Table, Id}),
-  ok = ecm_process_server:monitor(Pid).
+  ok = ecm_process_server:monitor(Pid),
+  Result.
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -172,6 +182,14 @@ sync_table(Type) ->
   ],
   ok = sync_table(Table, TabDef).
 
+%%--------------------------------------------------------------------
+%% @doc
+%% @spec
+%% @end
+%%--------------------------------------------------------------------
+sync_table(Table, TabDef) ->
+  on_add_table_copy(mnesia:add_table_copy(Table, node(), ram_copies), Table, TabDef).
+
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
@@ -184,9 +202,6 @@ on_add_table_copy({aborted, {already_exists, Table, _}}, Table, _) ->
   ok = mnesia:wait_for_tables([schema, Table], 60000);
 on_add_table_copy({abort, Reason}, _, _) ->
   {error, Reason}.
-
-sync_table(Table, TabDef) ->
-  on_add_table_copy(mnesia:add_table_copy(Table, node(), ram_copies), Table, TabDef).
 
 table_name(Type) ->
   %% won't create atom
