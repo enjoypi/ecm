@@ -6,8 +6,8 @@
 -module(ecm).
 
 %% API
--export(
-[
+-export([
+  all_nodes/0,
   call/3,
   cast/3,
   current_node/1,
@@ -21,6 +21,7 @@
   hatch_child/6,
   hatch_child/7,
   multi_cast/2,
+  nodes/1,
   send/3,
   set/4,
   size/1,
@@ -37,6 +38,9 @@
 %% @spec
 %% @end
 %%--------------------------------------------------------------------
+all_nodes() ->
+  ecm_db:all_nodes().
+
 call(Type, Id, Msg) ->
   call(ecm_db:get(Type, Id), Msg).
 
@@ -77,7 +81,7 @@ hatch_child(Type, Id, M, F, A, Msg, Selector) ->
     fun() ->
       hatch_child(ecm_db:get(Type, Id), Type, Id, M, F, A, Msg, Selector)
     end,
-  global:trans({{Type,Id},self()},Fun).
+  global:trans({{Type, Id}, self()}, Fun).
 
 hatch_cast(Type, Id, M, F, A, Msg) ->
    Fun =
@@ -91,6 +95,9 @@ multi_cast(Type, Msg) ->
     fun(Pid) ->
       gen_server:cast(Pid, Msg)
     end).
+
+nodes(Type) ->
+  ecm_db:nodes(Type).
 
 send(Type, Id, Msg) ->
   send(ecm_db:get(Type, Id), Msg).
@@ -161,7 +168,7 @@ send(_, _) ->
 
 random_node([]) ->
   undefined;
-random_node(Nodes) when is_list(Nodes) ->
+random_node({_Type, Nodes}) when is_list(Nodes) ->
   Index = rand:uniform(length(Nodes)),
   Node = lists:nth(Index, Nodes),
   {ok, Node};
