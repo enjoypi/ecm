@@ -148,8 +148,7 @@ hatch_child(undefined, Type, Id, M, F, A, Msg, Selector) ->
   ok = ecm_db:set(Type, Id, Node, Pid),
   cast({ok, Pid}, Msg);
 hatch_child({ok, Pid}, _Type, _Id, _M, _F, _A, Msg, _Selector) ->
-  ok = gen_server:cast(Pid, Msg),
-  {ok,Pid}.
+  cast({ok, Pid}, Msg).
 
 send({ok, Pid}, undefined) ->
   {ok, Pid};
