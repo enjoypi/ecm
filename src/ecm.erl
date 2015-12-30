@@ -16,6 +16,7 @@
   hatch/5,
   hatch/6,
   hatch/7,
+  hatch_cast/6,
   hatch_child/5,
   hatch_child/6,
   hatch_child/7,
@@ -77,6 +78,13 @@ hatch_child(Type, Id, M, F, A, Msg, Selector) ->
       hatch_child(ecm_db:get(Type, Id), Type, Id, M, F, A, Msg, Selector)
     end,
   global:trans({{Type,Id},self()},Fun).
+
+hatch_cast(Type, Id, M, F, A, Msg) ->
+   Fun =
+    fun() ->
+      hatch_child(ecm_db:get(Type, Id), Type, Id, M, F, A, Msg, fun random_node/1)
+    end,
+  spawn(global,trans,[{{Type,Id},self()},Fun]).
 
 multi_cast(Type, Msg) ->
   ok = ecm_db:foreach_pid(Type,

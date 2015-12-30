@@ -16,7 +16,9 @@
   size/1,
   start/2,
   sync_table/1,
-  sync_table/2
+  sync_table/2,
+  select/1,
+  all/0
 ]).
 
 %% ecm_Type
@@ -24,7 +26,7 @@
 
 %% tables for masters
 -record(ecm_nodes, {type, node}).
--record(ecm_processes, {pid, table, id}).
+-record(ecm_processes, {pid, table, id, node_id}).
 
 %%%===================================================================
 %%% API
@@ -37,7 +39,7 @@
 %%--------------------------------------------------------------------
 delete(Pid) when is_pid(Pid) ->
   case catch mnesia:dirty_read(ecm_processes, Pid) of
-    [{ecm_processes, Pid, Table, Id}] ->
+    [{ecm_processes, Pid, Table, Id, _}] ->
       case catch mnesia:dirty_read(Table, Id) of
         %% must match Pid
         [{Table, Id, Pid, _}] ->
@@ -50,6 +52,14 @@ delete(Pid) when is_pid(Pid) ->
   end,
   %% delete whatever
   ok = mnesia:dirty_delete(ecm_processes, Pid).
+
+all() ->
+  mnesia:dirty_all_keys(ecm_processes).
+
+select(NodeId) ->
+  MatchSpec = [{{'_','$1','_','_','$2'}, [{'==','$2',{const,NodeId}}], ['$1']}],
+  mnesia:dirty_select(ecm_processes,MatchSpec).
+
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -127,8 +137,9 @@ set(Type, Id, Node, Pid) ->
       _ ->
         ok
     end,
+  {ok,NodeId} = rpc:call(Node,application,get_env,[ecm,node_id]),
   ok = mnesia:dirty_write({Table, Id, Pid, Node}),
-  ok = mnesia:dirty_write({ecm_processes, Pid, Table, Id}),
+  ok = mnesia:dirty_write({ecm_processes, Pid, Table, Id, NodeId}),
   ok = ecm_process_server:monitor(Pid),
   Result.
 
