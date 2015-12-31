@@ -18,7 +18,9 @@
   size/1,
   start/2,
   sync_table/1,
-  sync_table/2
+  sync_table/2,
+  select/1,
+  all/0
 ]).
 
 %% ecm_Type
@@ -26,7 +28,7 @@
 
 %% tables for masters
 -record(ecm_nodes, {type, node}).
--record(ecm_processes, {pid, table, id}).
+-record(ecm_processes, {pid, table, id, node_id}).
 
 %%%===================================================================
 %%% API
@@ -48,7 +50,7 @@ all_nodes() ->
 %%--------------------------------------------------------------------
 delete(Pid) when is_pid(Pid) ->
   case catch mnesia:dirty_read(ecm_processes, Pid) of
-    [{ecm_processes, Pid, Table, Id}] ->
+    [{ecm_processes, Pid, Table, Id, _}] ->
       case catch mnesia:dirty_read(Table, Id) of
         %% must match Pid
         [{Table, Id, Pid, _}] ->
@@ -61,6 +63,14 @@ delete(Pid) when is_pid(Pid) ->
   end,
   %% delete whatever
   ok = mnesia:dirty_delete(ecm_processes, Pid).
+
+all() ->
+  mnesia:dirty_all_keys(ecm_processes).
+
+select(Flag) ->
+  MatchSpec = [{{'_','$1','_','_','$2'}, [{'=:=','$2',{const,Flag}}], ['$1']}],
+  mnesia:dirty_select(ecm_processes,MatchSpec).
+
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -146,8 +156,10 @@ set(Type, Id, Node, Pid) ->
       _ ->
         ok
     end,
+  NodeString = atom_to_list(Node),
+  [Flag,_Host] = string:tokens(NodeString,"@"),
   ok = mnesia:dirty_write({Table, Id, Pid, Node}),
-  ok = mnesia:dirty_write({ecm_processes, Pid, Table, Id}),
+  ok = mnesia:dirty_write({ecm_processes, Pid, Table, Id, Flag}),
   ok = ecm_process_server:monitor(Pid),
   Result.
 
@@ -198,7 +210,6 @@ sync_table(Type) ->
     {ram_copies, Nodes},
     {type, set}
   ],
-  error_logger:error_msg("~p:sync_table\t~p", [node(), Type]),
   ok = sync_table(Table, TabDef).
 
 %%--------------------------------------------------------------------
@@ -220,7 +231,6 @@ on_add_table_copy({aborted, {no_exists, _}}, Table, TabDef) ->
 on_add_table_copy({aborted, {already_exists, Table, _}}, Table, _) ->
   ok = mnesia:wait_for_tables([schema, Table], 60000);
 on_add_table_copy(Reason, _, _) ->
-  error_logger:error_msg("~p", [Reason]),
   Reason.
 
 sync_other_tables() ->
