@@ -21,6 +21,7 @@
   hatch_child/7,
   multi_cast/2,
   nodes/1,
+  processes/1,
   send/3,
   set/4,
   size/1,
@@ -90,6 +91,9 @@ multi_cast(Type, Msg) ->
 
 nodes(Type) ->
   ecm_db:nodes(Type).
+
+processes(Type) ->
+  ecm_db:processes(Type).
 
 send(Type, Id, Msg) ->
   send(ecm_db:get(Type, Id), Msg).
