@@ -44,7 +44,7 @@ monitor(Pid) ->
 
 reborn(NodeId) ->
   {ok, Masters} = application:get_env(ecm, masters),
-  case lists:member(node(),Masters) of
+  case lists:member(node(), Masters) of
     false ->
       lists:map(
         fun(Node) ->
@@ -99,7 +99,7 @@ init([]) ->
 %% @end
 %%--------------------------------------------------------------------
 
-handle_call({reborn,NodeId}, _From, State) ->
+handle_call({reborn, NodeId}, _From, State) ->
   CleanNum = do_reborn_clean_pid(NodeId),
   {reply, CleanNum, State};
 handle_call(_Request, _From, State) ->
@@ -135,7 +135,7 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_info(_Info = {'DOWN', _MonitorRef, process, _Pid, noconnection}, State) ->
   {noreply, State};
-handle_info(Info = {'DOWN', MonitorRef, process, Pid, _Reason}, State) ->
+handle_info(_Info = {'DOWN', MonitorRef, process, Pid, _Reason}, State) ->
   ok = ecm_db:delete(Pid),
   erlang:demonitor(MonitorRef, [flush]),
   {noreply, State};
@@ -178,8 +178,8 @@ code_change(_OldVsn, State, _Extra) ->
 
 do_reborn_clean_pid(NodeId) ->
   lists:foldl(
-    fun(Pid,Acc) ->
+    fun(Pid, Acc) ->
       ecm_db:delete(Pid),
-      Acc +1
-    end,0,ecm_db:select(NodeId)).
+      Acc + 1
+    end, 0, ecm_db:select(NodeId)).
 
