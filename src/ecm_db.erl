@@ -66,8 +66,8 @@ delete(Pid) when is_pid(Pid) ->
 all() ->
   mnesia:dirty_all_keys(ecm_processes).
 
-select(NodeId) ->
-  MatchSpec = [{{'_','$1','_','_','$2'}, [{'==','$2',{const,NodeId}}], ['$1']}],
+select(Flag) ->
+  MatchSpec = [{{'_','$1','_','_','$2'}, [{'=:=','$2',{const,Flag}}], ['$1']}],
   mnesia:dirty_select(ecm_processes,MatchSpec).
 
 
@@ -147,9 +147,10 @@ set(Type, Id, Node, Pid) ->
       _ ->
         ok
     end,
-  {ok,NodeId} = rpc:call(Node,application,get_env,[ecm,node_id]),
+  NodeString = atom_to_list(Node),
+  [Flag,_Host] = string:tokens(NodeString,"@"),
   ok = mnesia:dirty_write({Table, Id, Pid, Node}),
-  ok = mnesia:dirty_write({ecm_processes, Pid, Table, Id, NodeId}),
+  ok = mnesia:dirty_write({ecm_processes, Pid, Table, Id, Flag}),
   ok = ecm_process_server:monitor(Pid),
   Result.
 

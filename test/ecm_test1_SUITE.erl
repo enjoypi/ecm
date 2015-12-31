@@ -274,7 +274,7 @@ delete_test(Config) ->
   %%true = exit(Pid, normal),
 
   {ok, Pid} = ecm:get(Type, Id),
-  [{ecm_processes, Pid, ecm_test, Id}] = mnesia:dirty_read(ecm_processes, Pid),
+  [{ecm_processes, Pid, ecm_test, Id,_Flag}] = mnesia:dirty_read(ecm_processes, Pid),
   [{ecm_test, Id, Pid, _}] = mnesia:dirty_read(ecm_test, Id),
   ok = ecm_db:delete(Pid),
   undefined = ecm:get(Type, Id),
@@ -289,7 +289,7 @@ delete_test(Config) ->
     exit(timeout)
   end,
   {ok, Pid2} = ecm:get(Type, Id),
-  [{ecm_processes, Pid2, ecm_test, Id}] = mnesia:dirty_read(ecm_processes, Pid2),
+  [{ecm_processes, Pid2, ecm_test, Id,_Flag1}] = mnesia:dirty_read(ecm_processes, Pid2),
   [{ecm_test, Id, Pid2, _}] = mnesia:dirty_read(ecm_test, Id),
 
   exit(Pid2, kill),
