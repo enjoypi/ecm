@@ -8,6 +8,9 @@
 %% API
 -export([
   all_nodes/0,
+  async_hatch/5,
+  async_hatch/6,
+  async_hatch/7,
   call/3,
   cast/3,
   current_node/1,
@@ -16,10 +19,6 @@
   hatch/5,
   hatch/6,
   hatch/7,
-  hatch_cast/6,
-  hatch_child/5,
-  hatch_child/6,
-  hatch_child/7,
   multi_cast/2,
   nodes/1,
   processes/1,
@@ -66,30 +65,25 @@ hatch(Type, Id, M, F, A, Msg) ->
   hatch(Type, Id, M, F, A, Msg, fun random_node/1).
 
 hatch(Type, Id, M, F, A, Msg, Selector) ->
-  hatch(Type, Id, M, F, A, Msg, Selector, []).
-
-hatch(Type, Id, M, F, A, Msg, Selector, Options) ->
-  hatch(ecm_db:get(Type, Id), Type, Id, M, F, A, Msg, Selector, Options).
-
-hatch_child(Type, Id, M, F, A) ->
-  hatch_child(Type, Id, M, F, A, undefined).
-
-hatch_child(Type, Id, M, F, A, Msg) ->
-  hatch_child(Type, Id, M, F, A, Msg, fun random_node/1).
-
-hatch_child(Type, Id, M, F, A, Msg, Selector) ->
   Fun =
     fun() ->
-      hatch_child(ecm_db:get(Type, Id), Type, Id, M, F, A, Msg, Selector)
+      hatch(ecm_db:get(Type, Id), Type, Id, M, F, A, Msg, Selector)
     end,
   global:trans({{Type, Id}, self()}, Fun).
 
-hatch_cast(Type, Id, M, F, A, Msg) ->
-   Fun =
+async_hatch(Type, Id, M, F, A) ->
+  async_hatch(Type, Id, M, F, A, undefined).
+
+async_hatch(Type, Id, M, F, A, Msg) ->
+  async_hatch(Type, Id, M, F, A, Msg, fun random_node/1).
+
+async_hatch(Type, Id, M, F, A, Msg, Selector) ->
+  Fun =
     fun() ->
-      hatch_child(ecm_db:get(Type, Id), Type, Id, M, F, A, Msg, fun random_node/1)
+      hatch(ecm_db:get(Type, Id), Type, Id, M, F, A, Msg, Selector)
     end,
-  spawn(global,trans,[{{Type,Id},self()},Fun]).
+  spawn(global, trans, [{{Type, Id}, self()}, Fun]),
+  ok.
 
 multi_cast(Type, Msg) ->
   ok = ecm_db:foreach_pid(Type,
@@ -135,15 +129,7 @@ cast({ok, Pid}, Msg) ->
 cast(_, _) ->
   undefined.
 
-hatch(undefined, Type, Id, M, F, A, Msg, Selector, Options) ->
-  {ok, Node} = Selector(Type),
-  Pid = spawn_opt(Node, M, F, A, Options),
-  ok = ecm_db:set(Type, Id, Node, Pid),
-  send({ok, Pid}, Msg);
-hatch({ok, _Pid}, _Type, _Id, _M, _F, _A, _Msg, _Selector, _Options) ->
-  already_exists.
-
-hatch_child(undefined, Type, Id, M, F, A, Msg, Selector) ->
+hatch(undefined, Type, Id, M, F, A, Msg, Selector) ->
   {ok, Node} = Selector(Type),
   %% startchild_ret() = {ok, Child :: child()}
   %%             | {ok, Child :: child(), Info :: term()}
@@ -159,7 +145,7 @@ hatch_child(undefined, Type, Id, M, F, A, Msg, Selector) ->
     end,
   ok = ecm_db:set(Type, Id, Node, Pid),
   cast({ok, Pid}, Msg);
-hatch_child({ok, Pid}, _Type, _Id, _M, _F, _A, Msg, _Selector) ->
+hatch({ok, Pid}, _Type, _Id, _M, _F, _A, Msg, _Selector) ->
   cast({ok, Pid}, Msg).
 
 send({ok, Pid}, undefined) ->

@@ -51,6 +51,8 @@ all_nodes() ->
 delete(Pid) when is_pid(Pid) ->
   case catch mnesia:dirty_read(ecm_processes, Pid) of
     [{ecm_processes, Pid, Table, Id, _}] ->
+      %% delete whatever, first delete from ecm_processes before ecm:get
+      ok = mnesia:dirty_delete(ecm_processes, Pid),
       case catch mnesia:dirty_read(Table, Id) of
         %% must match Pid
         [{Table, Id, Pid, _}] ->
@@ -60,16 +62,14 @@ delete(Pid) when is_pid(Pid) ->
       end;
     _ ->
       ok
-  end,
-  %% delete whatever
-  ok = mnesia:dirty_delete(ecm_processes, Pid).
+  end.
 
 all() ->
   mnesia:dirty_all_keys(ecm_processes).
 
 select(Flag) ->
-  MatchSpec = [{{'_','$1','_','_','$2'}, [{'=:=','$2',{const,Flag}}], ['$1']}],
-  mnesia:dirty_select(ecm_processes,MatchSpec).
+  MatchSpec = [{{'_', '$1', '_', '_', '$2'}, [{'=:=', '$2', {const, Flag}}], ['$1']}],
+  mnesia:dirty_select(ecm_processes, MatchSpec).
 
 
 %%--------------------------------------------------------------------
@@ -157,7 +157,7 @@ set(Type, Id, Node, Pid) ->
         ok
     end,
   NodeString = atom_to_list(Node),
-  [Flag,_Host] = string:tokens(NodeString,"@"),
+  [Flag, _Host] = string:tokens(NodeString, "@"),
   ok = mnesia:dirty_write({Table, Id, Pid, Node}),
   ok = mnesia:dirty_write({ecm_processes, Pid, Table, Id, Flag}),
   ok = ecm_process_server:monitor(Pid),

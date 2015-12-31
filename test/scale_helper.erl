@@ -64,20 +64,8 @@ end_per_suite(Config) ->
 %%           {save_config,Config1} | {skip_and_save,Reason,Config1}
 %% @end
 %%--------------------------------------------------------------------
-hatch_test(Config) ->
-  Type = ?config(type, Config),
-  Id = random_id(),
-
-  {ok, Pid} = ecm:hatch(Type, Id, ecm_echo, echo, []),
-
-  Ref = make_ref(),
-  {ok, Pid} = ecm:send(Type, Id, {self(), Ref}),
-  receive
-    Ref ->
-      ok
-  after 10000 ->
-    exit(timeout)
-  end.
+hatch_test(_Config) ->
+  ok.
 
 %%--------------------------------------------------------------------
 %% @doc Test case function. (The name of it must be specified in
@@ -101,7 +89,7 @@ server_test(Config) ->
   Id = random_id(),
 
   RefMsg = make_ref(),
-  {ok, Pid} = ecm:hatch_child(Type, Id, ecm_test_sup, start_child, [Id], {self(), RefMsg}),
+  {ok, Pid} = ecm:hatch(Type, Id, ecm_test_sup, start_child, [Id], {self(), RefMsg}),
   receive
     RefMsg ->
       ok

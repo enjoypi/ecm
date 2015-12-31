@@ -263,7 +263,7 @@ delete_test(Config) ->
   Id = 1,
 
   RefMsg = make_ref(),
-  {ok, Pid} = ecm:hatch_child(Type, Id, ecm_test_sup, start_child, [Id], {self(), RefMsg}),
+  {ok, Pid} = ecm:hatch(Type, Id, ecm_test_sup, start_child, [Id], {self(), RefMsg}),
   receive
     RefMsg ->
       ok
@@ -281,7 +281,7 @@ delete_test(Config) ->
   [] = mnesia:dirty_read(ecm_processes, Pid),
   [] = mnesia:dirty_read(ecm_test, Id),
 
-  {ok, Pid2} = ecm:hatch_child(Type, Id, ecm_test_sup, start_child, [Id], {self(), RefMsg}),
+  {ok, Pid2} = ecm:hatch(Type, Id, ecm_test_sup, start_child, [Id], {self(), RefMsg}),
   receive
     RefMsg ->
       ok
