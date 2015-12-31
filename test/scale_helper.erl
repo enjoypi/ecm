@@ -10,7 +10,7 @@
 -export([
   end_per_suite/1,
   init_per_suite/1,
-  hatch_test/1,
+  delete_test/1,
   server_test/1
 ]).
 
@@ -64,8 +64,49 @@ end_per_suite(Config) ->
 %%           {save_config,Config1} | {skip_and_save,Reason,Config1}
 %% @end
 %%--------------------------------------------------------------------
-hatch_test(_Config) ->
-  ok.
+delete_test(Config) ->
+  Type = ?config(type, Config),
+  Id = random_id(),
+
+  RefMsg = make_ref(),
+  {ok, Pid} = ecm:hatch(Type, Id, ecm_test_sup, start_child, [Id], {self(), RefMsg}),
+  receive
+    RefMsg ->
+      ok
+  after 10000 ->
+    exit(timeout)
+  end,
+
+  %%true = exit(Pid, normal),
+
+  {ok, Pid} = ecm:get(Type, Id),
+  [{ecm_processes, Pid, ecm_test, Id, _Flag}] = mnesia:dirty_read(ecm_processes, Pid),
+  [{ecm_test, Id, Pid, _}] = mnesia:dirty_read(ecm_test, Id),
+  ok = ecm_db:delete(Pid),
+  undefined = ecm:get(Type, Id),
+  [] = mnesia:dirty_read(ecm_processes, Pid),
+  [] = mnesia:dirty_read(ecm_test, Id),
+
+  {ok, Pid2} = ecm:hatch(Type, Id, ecm_test_sup, start_child, [Id], {self(), RefMsg}),
+  receive
+    RefMsg ->
+      ok
+  after 10000 ->
+    exit(timeout)
+  end,
+  {ok, Pid2} = ecm:get(Type, Id),
+  [{ecm_processes, Pid2, ecm_test, Id, _Flag1}] = mnesia:dirty_read(ecm_processes, Pid2),
+  [{ecm_test, Id, Pid2, _}] = mnesia:dirty_read(ecm_test, Id),
+
+  exit(Pid2, kill),
+  ok = wait_undefined(ok, ecm, get, [Type, Id]),
+  [] = mnesia:dirty_read(ecm_test, Id),
+  [] = mnesia:dirty_read(ecm_processes, Pid2).
+
+wait_undefined(undefined, _M, _F, _A) ->
+  ok;
+wait_undefined(_, M, F, A) ->
+  wait_undefined(apply(M, F, A), M, F, A).
 
 %%--------------------------------------------------------------------
 %% @doc Test case function. (The name of it must be specified in

@@ -169,7 +169,7 @@ groups() ->
   [
     {all,
       [parallel, shuffle],
-        lists:duplicate(50, hatch_test) ++ lists:duplicate(50, server_test)
+        lists:duplicate(50, delete_test) ++ lists:duplicate(50, server_test)
     }
   ].
 
@@ -191,7 +191,6 @@ groups() ->
 %%--------------------------------------------------------------------
 all() ->
   [
-    hatch_test,
     server_test,
     delete_test
   ].
@@ -215,7 +214,7 @@ all() ->
 %% @spec TestCase() -> Info
 %% @end
 %%--------------------------------------------------------------------
-hatch_test() ->
+delete_test() ->
   [].
 
 %%--------------------------------------------------------------------
@@ -235,8 +234,8 @@ hatch_test() ->
 %%           {save_config,Config1} | {skip_and_save,Reason,Config1}
 %% @end
 %%--------------------------------------------------------------------
-hatch_test(Config) ->
-  scale_helper:hatch_test(Config).
+delete_test(Config) ->
+  scale_helper:delete_test(Config).
 
 %%--------------------------------------------------------------------
 %% @doc Test case function. (The name of it must be specified in
@@ -258,46 +257,4 @@ hatch_test(Config) ->
 server_test(Config) ->
   scale_helper:server_test(Config).
 
-delete_test(Config) ->
-  Type = ?config(type, Config),
-  Id = 1,
 
-  RefMsg = make_ref(),
-  {ok, Pid} = ecm:hatch(Type, Id, ecm_test_sup, start_child, [Id], {self(), RefMsg}),
-  receive
-    RefMsg ->
-      ok
-  after 10000 ->
-    exit(timeout)
-  end,
-
-  %%true = exit(Pid, normal),
-
-  {ok, Pid} = ecm:get(Type, Id),
-  [{ecm_processes, Pid, ecm_test, Id,_Flag}] = mnesia:dirty_read(ecm_processes, Pid),
-  [{ecm_test, Id, Pid, _}] = mnesia:dirty_read(ecm_test, Id),
-  ok = ecm_db:delete(Pid),
-  undefined = ecm:get(Type, Id),
-  [] = mnesia:dirty_read(ecm_processes, Pid),
-  [] = mnesia:dirty_read(ecm_test, Id),
-
-  {ok, Pid2} = ecm:hatch(Type, Id, ecm_test_sup, start_child, [Id], {self(), RefMsg}),
-  receive
-    RefMsg ->
-      ok
-  after 10000 ->
-    exit(timeout)
-  end,
-  {ok, Pid2} = ecm:get(Type, Id),
-  [{ecm_processes, Pid2, ecm_test, Id,_Flag1}] = mnesia:dirty_read(ecm_processes, Pid2),
-  [{ecm_test, Id, Pid2, _}] = mnesia:dirty_read(ecm_test, Id),
-
-  exit(Pid2, kill),
-  ok = wait_undefined(ok, ecm, get, [Type, Id]),
-  [] = mnesia:dirty_read(ecm_processes, Pid2),
-  [] = mnesia:dirty_read(ecm_test, Id).
-
-wait_undefined(undefined, _M, _F, _A) ->
-  ok;
-wait_undefined(_, M, F, A) ->
-  wait_undefined(apply(M, F, A), M, F, A).

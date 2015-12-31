@@ -169,7 +169,7 @@ groups() ->
   [
     {all,
       [parallel, shuffle],
-        lists:duplicate(50, hatch_test) ++ lists:duplicate(50, server_test)
+        lists:duplicate(50, delete_test) ++ lists:duplicate(50, server_test)
     }
   ].
 
@@ -213,7 +213,7 @@ all() ->
 %% @spec TestCase() -> Info
 %% @end
 %%--------------------------------------------------------------------
-hatch_test() ->
+delete_test() ->
   [].
 
 %%--------------------------------------------------------------------
@@ -233,8 +233,8 @@ hatch_test() ->
 %%           {save_config,Config1} | {skip_and_save,Reason,Config1}
 %% @end
 %%--------------------------------------------------------------------
-hatch_test(Config) ->
-  scale_helper:hatch_test(Config).
+delete_test(Config) ->
+  scale_helper:delete_test(Config).
 
 %%--------------------------------------------------------------------
 %% @doc Test case function. (The name of it must be specified in
