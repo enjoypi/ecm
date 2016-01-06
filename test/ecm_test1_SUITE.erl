@@ -169,7 +169,7 @@ groups() ->
   [
     {all,
       [parallel, shuffle],
-        lists:duplicate(50, delete_test) ++ lists:duplicate(50, server_test)
+        lists:duplicate(1000, delete_test) ++ lists:duplicate(1000, server_test)
     }
   ].
 
@@ -192,7 +192,7 @@ groups() ->
 all() ->
   [
     server_test,
-    delete_test
+    {group, all}
   ].
 
 
