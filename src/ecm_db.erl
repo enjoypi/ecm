@@ -231,9 +231,10 @@ sync_table(Table, TabDef) ->
 on_add_table_copy({atomic, ok}, Table, _TabDef) ->
   ok = mnesia:wait_for_tables([schema, Table], 60000);
 on_add_table_copy({aborted, {no_exists, _}}, Table, TabDef) ->
-  {atomic, ok} = mnesia:create_table(Table, TabDef),
-  ok;
+  on_add_table_copy(mnesia:create_table(Table, TabDef),Table, TabDef);
 on_add_table_copy({aborted, {already_exists, Table, _}}, Table, _) ->
+  ok = mnesia:wait_for_tables([schema, Table], 60000);
+on_add_table_copy({aborted, {already_exists, Table}}, Table, _) ->
   ok = mnesia:wait_for_tables([schema, Table], 60000);
 on_add_table_copy(Reason, _, _) ->
   Reason.
