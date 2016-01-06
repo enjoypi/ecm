@@ -248,5 +248,11 @@ sync_other_tables() ->
 
 table_name(Type) ->
   %% won't create atom
-  list_to_existing_atom(lists:concat(["ecm_", Type])).
+  List = lists:concat(["ecm_", Type]),
+  case catch list_to_existing_atom(List) of
+    {"EXIT",_} ->
+      list_to_atom(List);
+    Atom ->
+      Atom
+  end.
 
