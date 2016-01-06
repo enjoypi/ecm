@@ -69,7 +69,12 @@ all() ->
 
 select(Flag) ->
   MatchSpec = [{{'_', '$1', '_', '_', '$2'}, [{'=:=', '$2', {const, Flag}}], ['$1']}],
-  mnesia:dirty_select(ecm_processes, MatchSpec).
+  case catch mnesia:dirty_select(ecm_processes, MatchSpec) of
+    {'EXIT',_} ->
+      [];
+    List ->
+      List
+  end.
 
 
 %%--------------------------------------------------------------------
