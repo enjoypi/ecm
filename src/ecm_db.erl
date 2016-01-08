@@ -70,7 +70,7 @@ all() ->
 select(Flag) ->
   MatchSpec = [{{'_', '$1', '_', '_', '$2'}, [{'=:=', '$2', {const, Flag}}], ['$1']}],
   case catch mnesia:dirty_select(ecm_processes, MatchSpec) of
-    {'EXIT',_} ->
+    {'EXIT', _} ->
       [];
     List ->
       List
@@ -156,8 +156,8 @@ set(Type, Id, Node, Pid) ->
   Table = table_name(Type),
   Result =
     case catch mnesia:dirty_read(Table, Id) of
-      [R = {Table, Id, Pid, _}] ->
-        {ok, R};
+      [{Table, Id, OPid, ONode}] ->
+        {ok, {Id, OPid, ONode, Pid, Node}};
       _ ->
         ok
     end,
@@ -231,7 +231,7 @@ sync_table(Table, TabDef) ->
 on_add_table_copy({atomic, ok}, Table, _TabDef) ->
   ok = mnesia:wait_for_tables([schema, Table], 60000);
 on_add_table_copy({aborted, {no_exists, _}}, Table, TabDef) ->
-  on_add_table_copy(mnesia:create_table(Table, TabDef),Table, TabDef);
+  on_add_table_copy(mnesia:create_table(Table, TabDef), Table, TabDef);
 on_add_table_copy({aborted, {already_exists, Table, _}}, Table, _) ->
   ok = mnesia:wait_for_tables([schema, Table], 60000);
 on_add_table_copy({aborted, {already_exists, Table}}, Table, _) ->
@@ -250,7 +250,7 @@ table_name(Type) ->
   %% won't create atom
   List = lists:concat(["ecm_", Type]),
   case catch list_to_existing_atom(List) of
-    {"EXIT",_} ->
+    {"EXIT", _} ->
       list_to_atom(List);
     Atom ->
       Atom
