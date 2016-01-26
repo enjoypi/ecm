@@ -20,7 +20,11 @@
   sync_table/1,
   sync_table/2,
   select/1,
-  all/0
+  all/0,
+  write/1,
+  read/3,
+  transaction/1,
+  table_name/1
 ]).
 
 %% ecm_Type
@@ -33,6 +37,16 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
+
+write(Val) ->
+  mnesia:write(Val).
+
+read(Tab, Key, LockKind) ->
+  mnesia:read(Tab, Key, LockKind).
+
+transaction(Fun) ->
+  mnesia:transaction(Fun).
+
 
 %%--------------------------------------------------------------------
 %% @doc

@@ -65,11 +65,7 @@ hatch(Type, Id, M, F, A, Msg) ->
   hatch(Type, Id, M, F, A, Msg, fun random_node/1).
 
 hatch(Type, Id, M, F, A, Msg, Selector) ->
-  Fun =
-    fun() ->
-      hatch(ecm_db:get(Type, Id), Type, Id, M, F, A, Msg, Selector)
-    end,
-  global:trans({{Type, Id}, self()}, Fun).
+  hatch(ecm_db:get(Type, Id), Type, Id, M, F, A, Msg, Selector).
 
 async_hatch(Type, Id, M, F, A) ->
   async_hatch(Type, Id, M, F, A, undefined).
@@ -82,7 +78,7 @@ async_hatch(Type, Id, M, F, A, Msg, Selector) ->
     fun() ->
       hatch(ecm_db:get(Type, Id), Type, Id, M, F, A, Msg, Selector)
     end,
-  spawn(global, trans, [{{Type, Id}, self()}, Fun]),
+  spawn(Fun),
   ok.
 
 multi_cast(Type, Msg) ->
@@ -131,20 +127,36 @@ cast(_, _) ->
 
 hatch(undefined, Type, Id, M, F, A, Msg, Selector) ->
   {ok, Node} = Selector(Type),
-  %% startchild_ret() = {ok, Child :: child()}
-  %%             | {ok, Child :: child(), Info :: term()}
-  %%             | {error, startchild_err()}
-  {ok, Pid} =
-    case rpc:call(Node, M, F, A) of
-      {ok, P} ->
-        {ok, P};
-      {ok, P, _Info} ->
-        {ok, P};
-      Error ->
-        Error
+  NodeString = atom_to_list(Node),
+  [Flag, _Host] = string:tokens(NodeString, "@"),
+  Table = ecm_db:table_name(Type),
+  Fun =
+    fun() ->
+      case ecm_db:read(Table,Id,write) of
+        [{_, Id, Pid, _}] ->
+          {ok,Pid};
+        _ ->
+          {ok,Pid} =
+            case rpc:call(Node, M, F, A) of
+              {ok, P} ->
+                {ok, P};
+              {ok, P, _Info} ->
+                {ok, P};
+              Error ->
+                Error
+            end,
+          ecm_db:write({Table, Id, Pid, Node}),
+          ecm_db:write({ecm_processes, Pid, Table, Id, Flag}),
+          ecm_process_server:monitor(Pid),
+          {ok,Pid}
+      end
     end,
-  ok = ecm_db:set(Type, Id, Node, Pid),
-  cast({ok, Pid}, Msg);
+  case ecm_db:transaction(Fun) of
+    {atomic,{ok,Pid}} ->
+      cast({ok, Pid}, Msg);
+    Reason ->
+      {error,Reason}
+  end;
 hatch({ok, Pid}, _Type, _Id, _M, _F, _A, Msg, _Selector) ->
   cast({ok, Pid}, Msg).
 
