@@ -81,9 +81,9 @@ wait_dependent([], _Times, _MaxTimes) ->
   ok;
 wait_dependent(Dependent = [Type | Others], Times, MaxTimes) ->
   case ecm_db:nodes(Type) of
-    [] ->
-      receive after 1000 -> ok end,
-      wait_dependent(Dependent, Times + 1, MaxTimes);
+    {Type, Nodes} when is_list(Nodes), length(Nodes) > 0 ->
+      wait_dependent(Others, Times, MaxTimes);
     _ ->
-      wait_dependent(Others, Times, MaxTimes)
+      receive after 1000 -> ok end,
+      wait_dependent(Dependent, Times + 1, MaxTimes)
   end.
