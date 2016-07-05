@@ -129,14 +129,16 @@ foreach_pid(Type, Function) ->
 %% @spec
 %% @end
 %%--------------------------------------------------------------------
-get(Type, Id) ->
+get(Type, Id) when Type =/= undefined, is_atom(Type), Id =/= undefined ->
   Table = table_name(Type),
   case catch mnesia:dirty_read(Table, Id) of
     [{_, _, Pid, _} | _] ->
       {ok, Pid};
     _ ->
       undefined
-  end.
+  end;
+get(_, _) ->
+  undefined.
 
 %%--------------------------------------------------------------------
 %% @doc
