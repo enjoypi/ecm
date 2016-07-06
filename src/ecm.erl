@@ -26,7 +26,8 @@
   set/4,
   size/1,
   sync_table/1,
-  sync_table/2
+  sync_table/2,
+  wait_dependencies/1
 ]).
 
 %%%===================================================================
@@ -132,11 +133,11 @@ hatch(undefined, Type, Id, M, F, A, Msg, Selector) ->
   Table = ecm_db:table_name(Type),
   Fun =
     fun() ->
-      case ecm_db:read(Table,Id,write) of
+      case ecm_db:read(Table, Id, write) of
         [{_, Id, Pid, _}] ->
-          {ok,Pid};
+          {ok, Pid};
         _ ->
-          {ok,Pid} =
+          {ok, Pid} =
             case rpc:call(Node, M, F, A) of
               {ok, P} ->
                 {ok, P};
@@ -148,14 +149,14 @@ hatch(undefined, Type, Id, M, F, A, Msg, Selector) ->
           ecm_db:write({Table, Id, Pid, Node}),
           ecm_db:write({ecm_processes, Pid, Table, Id, Flag}),
           ecm_process_server:monitor(Pid),
-          {ok,Pid}
+          {ok, Pid}
       end
     end,
   case ecm_db:transaction(Fun) of
-    {atomic,{ok,Pid}} ->
+    {atomic, {ok, Pid}} ->
       cast({ok, Pid}, Msg);
     Reason ->
-      {error,Reason}
+      {error, Reason}
   end;
 hatch({ok, Pid}, _Type, _Id, _M, _F, _A, Msg, _Selector) ->
   cast({ok, Pid}, Msg).
@@ -176,3 +177,26 @@ random_node({_Type, Nodes}) when is_list(Nodes) ->
   {ok, Node};
 random_node(Type) ->
   random_node(ecm_db:nodes(Type)).
+
+default_dependent(master) ->
+  [];
+default_dependent(_) ->
+  [master].
+
+wait_dependencies(Type) ->
+  Dependent = application:get_env(ecm, dependent, []),
+  DependentTimeout = application:get_env(ecm, dependent_timeout, 60),
+  ok = wait_dependencies(lists:append(default_dependent(Type), Dependent), 0, DependentTimeout).
+
+wait_dependencies(_, Times, Times) ->
+  timeout;
+wait_dependencies([], _Times, _MaxTimes) ->
+  ok;
+wait_dependencies(Dependent = [Type | Others], Times, MaxTimes) ->
+  case ecm_db:nodes(Type) of
+    {Type, Nodes} when is_list(Nodes), length(Nodes) > 0 ->
+      wait_dependencies(Others, Times, MaxTimes);
+    _ ->
+      receive after 1000 -> ok end,
+      wait_dependencies(Dependent, Times + 1, MaxTimes)
+  end.

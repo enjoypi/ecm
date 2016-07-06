@@ -36,7 +36,6 @@ start(_StartType, _StartArgs) ->
   {ok, Masters} = application:get_env(ecm, masters),
   true = connect_master(Masters),
   ok = ecm_db:start(NodeType, Masters),
-  ok = wait_dependent(NodeType),
   {ok, Pid}.
 
 %%--------------------------------------------------------------------
@@ -64,26 +63,3 @@ connect_master(_, []) ->
   true;
 connect_master(true, [OneMaster | Others]) ->
   connect_master(net_kernel:connect_node(OneMaster), Others).
-
-default_dependent(master) ->
-  [];
-default_dependent(_) ->
-  [master].
-
-wait_dependent(Type) ->
-  Dependent = application:get_env(ecm, dependent, []),
-  DependentTimeout = application:get_env(ecm, dependent_timeout, 60),
-  ok = wait_dependent(lists:append(default_dependent(Type), Dependent), 0, DependentTimeout).
-
-wait_dependent(_, Times, Times) ->
-  timeout;
-wait_dependent([], _Times, _MaxTimes) ->
-  ok;
-wait_dependent(Dependent = [Type | Others], Times, MaxTimes) ->
-  case ecm_db:nodes(Type) of
-    {Type, Nodes} when is_list(Nodes), length(Nodes) > 0 ->
-      wait_dependent(Others, Times, MaxTimes);
-    _ ->
-      receive after 1000 -> ok end,
-      wait_dependent(Dependent, Times + 1, MaxTimes)
-  end.
