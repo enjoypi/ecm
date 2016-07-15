@@ -201,7 +201,9 @@ start(Type, Masters) ->
   ok = application:ensure_started(mnesia),
   {ok, _} = mnesia:change_config(extra_db_nodes, Masters),
   ok = mnesia:wait_for_tables([schema], 60000),
-  ok = sync_table(Type).
+  ok = sync_table(Type),
+  ets:new(ecm_table_names, [set, {read_concurrency, true}, named_table, public]),
+  ok.
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -263,12 +265,11 @@ sync_other_tables() ->
   ok = lists:foreach(fun sync_table/1, Tables).
 
 table_name(Type) ->
+  table_name(ets:lookup(ecm_table_names, Type), Type).
+table_name([{_, Name}], _Type) ->
+  Name;
+table_name([], Type) ->
   %% won't create atom
-  List = lists:concat(["ecm_", Type]),
-  case catch list_to_existing_atom(List) of
-    {"EXIT", _} ->
-      list_to_atom(List);
-    Atom ->
-      Atom
-  end.
-
+  Name = list_to_existing_atom(lists:concat(["ecm_", Type])),
+  true = ets:insert(ecm_table_names, {Type, Name}),
+  Name.
