@@ -269,7 +269,6 @@ table_name(Type) ->
 table_name([{_, Name}], _Type) ->
   Name;
 table_name([], Type) ->
-  %% won't create atom
-  Name = list_to_existing_atom(lists:concat(["ecm_", Type])),
+  Name = list_to_atom(lists:concat(["ecm_", Type])),
   true = ets:insert(ecm_table_names, {Type, Name}),
   Name.
