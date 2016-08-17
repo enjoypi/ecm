@@ -48,7 +48,7 @@ reborn(NodeId) ->
     false ->
       lists:map(
         fun(Node) ->
-          gen_server:call({?SERVER, Node}, {reborn, NodeId})
+          gen_server:cast({?SERVER, Node}, {reborn, NodeId})
         end,
         Masters
       );
@@ -99,9 +99,6 @@ init([]) ->
 %% @end
 %%--------------------------------------------------------------------
 
-handle_call({reborn, NodeId}, _From, State) ->
-  CleanNum = do_reborn_clean_pid(NodeId),
-  {reply, CleanNum, State};
 handle_call(_Request, _From, State) ->
   Reply = ok,
   {reply, Reply, State}.
@@ -118,6 +115,10 @@ handle_call(_Request, _From, State) ->
 %%--------------------------------------------------------------------
 handle_cast(_Msg = {monitor, Pid}, State) ->
   erlang:monitor(process, Pid),
+  {noreply, State};
+
+handle_cast({reborn, NodeId}, State) ->
+  do_reborn_clean_pid(NodeId),
   {noreply, State};
 
 handle_cast(_Msg, State) ->
