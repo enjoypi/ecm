@@ -172,11 +172,35 @@ send(_, _) ->
 random_node([]) ->
   undefined;
 random_node({_Type, Nodes}) when is_list(Nodes) ->
-  Index = rand:uniform(length(Nodes)),
-  Node = lists:nth(Index, Nodes),
-  {ok, Node};
+  choose_node(Nodes);
 random_node(Type) ->
   random_node(ecm_db:nodes(Type)).
+
+choose_node(Nodes) ->
+  try sort_nodes(Nodes) of
+    {ok, Node} -> {ok, Node}
+  catch
+    _:_ ->
+      Index = rand:uniform(length(Nodes)),
+      Node = lists:nth(Index, Nodes),
+      {ok, Node}
+  end.
+
+sort_nodes(Nodes) ->
+  Tb = lists:foldl(
+    fun(X, Res) ->
+      Mem = rpc:call(X, erlang, memory, []),
+      {_, Proused} = lists:keyfind(processes_used, 1, Mem),
+      [{X, Proused} | Res]
+    end, [], Nodes),
+  Nb = lists:sort(
+    fun(A, B) ->
+      {_, Numa} = A,
+      {_, Numb} = B,
+      Numa < Numb
+    end, Tb),
+  {Node, _} = lists:nth(1, Nb),
+  {ok, Node}.
 
 default_dependent(master) ->
   [];
