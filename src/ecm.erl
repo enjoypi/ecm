@@ -187,19 +187,25 @@ choose_node(Nodes) ->
   end.
 
 sort_nodes(Nodes) ->
-  Tb = lists:foldl(
-    fun(X, Res) ->
-      Mem = rpc:call(X, erlang, memory, []),
-      {_, Proused} = lists:keyfind(processes_used, 1, Mem),
-      [{X, Proused} | Res]
+  NodeTable = lists:foldl(
+    fun(Node, Res) ->
+      [Memory | _] = mnesia:dirty_read({ecm_nodeinfo, Node}),
+      {_, _, Process_Used, UpLoad_Time} = Memory,
+      Now_Time = misc:now(),
+      Dis_Time = Now_Time - UpLoad_Time,
+      if
+        Dis_Time < 120000 -> [{Node, Process_Used} | Res];
+        true -> Res
+      end
     end, [], Nodes),
-  Nb = lists:sort(
+  OrderNodeTab =
+    lists:sort(
     fun(A, B) ->
       {_, Numa} = A,
       {_, Numb} = B,
       Numa < Numb
-    end, Tb),
-  {Node, _} = lists:nth(1, Nb),
+    end, NodeTable),
+  {Node, _} = lists:nth(1, OrderNodeTab),
   {ok, Node}.
 
 default_dependent(master) ->

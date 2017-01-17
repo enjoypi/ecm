@@ -33,6 +33,7 @@
 %% tables for masters
 -record(ecm_nodes, {type, node}).
 -record(ecm_processes, {pid, table, id, node_id}).
+-record(ecm_nodeinfo, {node, memory, time}).
 
 %%%===================================================================
 %%% API
@@ -223,7 +224,13 @@ sync_table(master) ->
     {ram_copies, Masters},
     {type, set}
   ],
-  ok = sync_table(ecm_processes, ProcessesTabDef);
+  ok = sync_table(ecm_processes, ProcessesTabDef),
+  NodeInfoTabDef = [
+    {attributes, record_info(fields, ecm_nodeinfo)},
+    {ram_copies, Masters},
+    {type, set}
+  ],
+  ok = sync_table(ecm_nodeinfo, NodeInfoTabDef);
 sync_table(Type) ->
   %% can create atom
   Table = list_to_atom(lists:concat(["ecm_", Type])),
@@ -233,7 +240,12 @@ sync_table(Type) ->
     {ram_copies, Nodes},
     {type, set}
   ],
-  ok = sync_table(Table, TabDef).
+  ok = sync_table(Table, TabDef),
+  Mem = erlang:memory(),
+  {_, Proused} = lists:keyfind(processes_used, 1, Mem),
+  mnesia:dirty_write({ecm_nodeinfo, node(), Proused, misc:now()}),
+  ecm_check:start_link(),
+  ok.
 
 %%--------------------------------------------------------------------
 %% @doc
