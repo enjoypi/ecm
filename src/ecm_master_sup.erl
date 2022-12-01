@@ -65,10 +65,7 @@ init([]) ->
   NodeServer = {ecm_master_node_server, {ecm_master_node_server, start_link, []},
     Restart, Shutdown, Type, [ecm_master_node_server]},
 
-  ProcessServer = {ecm_process_server, {ecm_process_server, start_link, []},
-    Restart, Shutdown, Type, [ecm_process_server]},
-
-  {ok, {SupFlags, [NodeServer, ProcessServer]}}.
+  {ok, {SupFlags, [NodeServer]}}.
 
 %%%===================================================================
 %%% Internal functions

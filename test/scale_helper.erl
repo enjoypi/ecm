@@ -24,7 +24,7 @@
 %% @end
 %%--------------------------------------------------------------------
 init_per_suite(Config) ->
-  {ok, NodeType} = application:get_env(ecm, node_type),
+  {ok, NodeType} = application:get_env(gconfig, node_type),
   ct:pal("nodes\t~p", [nodes()]),
   ct:pal("mnesia:system_info\t~p", [mnesia:system_info(all)]),
   [{type, NodeType} | Config].
@@ -43,7 +43,7 @@ end_per_suite(Config) ->
   Type = ?config(type, Config),
   ct:pal("~p processes\t~p\ttotal processes\t~p", [
     Type,
-    ecm_db:size(Type),
+    ecm:table_size(Type),
     length(processes())
   ]).
 
@@ -79,11 +79,11 @@ delete_test(Config) ->
 
   %%true = exit(Pid, normal),
 
-  {ok, Pid} = ecm:get(Type, Id),
+  {ok, Pid} = ecm:get_process(Type, Id),
   [{ecm_processes, Pid, ecm_test, Id, _Flag}] = mnesia:dirty_read(ecm_processes, Pid),
   [{ecm_test, Id, Pid, _}] = mnesia:dirty_read(ecm_test, Id),
-  ok = ecm_db:delete(Pid),
-  undefined = ecm:get(Type, Id),
+  ok = ecm:del_process(Pid),
+  undefined = ecm:get_process(Type, Id),
   [] = mnesia:dirty_read(ecm_processes, Pid),
   [] = mnesia:dirty_read(ecm_test, Id),
 
@@ -94,7 +94,7 @@ delete_test(Config) ->
   after 10000 ->
     exit(timeout)
   end,
-  {ok, Pid2} = ecm:get(Type, Id),
+  {ok, Pid2} = ecm:get_process(Type, Id),
   [{ecm_processes, Pid2, ecm_test, Id, _Flag1}] = mnesia:dirty_read(ecm_processes, Pid2),
   [{ecm_test, Id, Pid2, _}] = mnesia:dirty_read(ecm_test, Id),
 

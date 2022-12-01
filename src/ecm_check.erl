@@ -39,8 +39,8 @@ handle_cast(_Msg, State) ->
 
 handle_info({check}, State) ->
   Mem = erlang:memory(),
-  {_, Proused} = lists:keyfind(processes_used, 1, Mem),
-  mnesia:dirty_write({ecm_nodeinfo, node(), Proused, misc:now()}),
+  {_, Total} = lists:keyfind(total, 1, Mem),
+  mnesia:dirty_write({ecm_nodeinfo, node(), Total, misc:now()}),
   ok = start_checktimer(),
   {noreply, State};
 
